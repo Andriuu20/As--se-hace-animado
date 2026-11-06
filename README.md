@@ -68,9 +68,15 @@ winget install Gyan.FFmpeg
 ```bash
 winget install Git.Git
 ```
-Descargar el proyecto (crea su propia carpeta, aparte de otras como la de editar vídeos):
+Si `npm` da el error **"la ejecución de scripts está deshabilitada en este sistema"**, permitir scripts para tu usuario (una sola vez) y responder **S**:
 ```bash
-cd $HOME\Documents
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+(Alternativa sin cambiar nada: usar `npm.cmd` y `npx.cmd` en lugar de `npm` y `npx`.)
+
+Descargar el proyecto en una carpeta propia, **fuera de OneDrive** (el clon crea su propia carpeta dentro). Ruta usada: `D:\Proyectos Animaciones` (con comillas porque tiene un espacio):
+```bash
+cd "D:\Proyectos Animaciones"
 ```
 ```bash
 git clone https://github.com/Andriuu20/as--se-hace-animado.git
