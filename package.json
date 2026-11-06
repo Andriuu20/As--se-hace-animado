@@ -2,10 +2,11 @@
   "name": "asi-se-hace-animado",
   "version": "0.1.0",
   "private": true,
-  "description": "Serie animada en 3D: cómo se hace el chicle",
+  "description": "Estudio de animaciones 3D \"Así se hace\" para TikTok/Reels",
   "scripts": {
     "preview": "node render.js preview",
-    "render": "node render.js full"
+    "render": "node render.js full",
+    "video": "node hacer-video.js"
   },
   "dependencies": {
     "@fontsource/montserrat": "5.0.16",
