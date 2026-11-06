@@ -1,0 +1,15 @@
+1
+00:00:00,200 --> 00:00:02,600
+El chicle empieza como una base de goma
+
+2
+00:00:03,000 --> 00:00:06,000
+Se calienta hasta que se derrite
+
+3
+00:00:06,400 --> 00:00:09,600
+Luego le echan azúcar, jarabe y colorante
+
+4
+00:00:10,000 --> 00:00:13,600
+Las aspas lo amasan sin parar

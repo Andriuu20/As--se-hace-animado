@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face{font-family:M;font-weight:800;src:url(../node_modules/@fontsource/montserrat/files/montserrat-latin-800-normal.woff2)}
+@font-face{font-family:M;font-weight:900;src:url(../node_modules/@fontsource/montserrat/files/montserrat-latin-900-normal.woff2)}
+html,body{margin:0;width:720px;height:1280px;overflow:hidden;background:#cfe9ff}
+canvas{display:block}
+#word{position:absolute;left:0;right:0;top:600px;text-align:center;font-family:M;font-weight:800;font-size:46px;color:#fff;
+  -webkit-text-stroke:9px #1a1a1a;paint-order:stroke fill;letter-spacing:0.5px}
+#label{position:absolute;left:0;right:0;top:940px;text-align:center;font-family:M;font-weight:900;font-size:66px;line-height:1.0;color:#FFC21A;
+  -webkit-text-stroke:12px #1a1a1a;paint-order:stroke fill;transform-origin:50% 50%}
+</style>
+</head>
+<body>
+<div id="word"></div>
+<div id="label"></div>
+<script src="../node_modules/three/build/three.min.js"></script>
+<script>
+const W=720,H=1280;
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(W,H);renderer.setPixelRatio(1);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#d8efff');
+const camera=new THREE.PerspectiveCamera(42,W/H,0.1,200);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0xb9c7d6,1.15));
+const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.position.set(6,12,8);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-10,right:10,top:10,bottom:-10});scene.add(sun);
+
+let seed=7;function rnd(){seed=(seed*16807)%2147483647;return (seed-1)/2147483646;}
+const lam=(c,o={})=>new THREE.MeshLambertMaterial(Object.assign({color:c},o));
+
+// wall with tiles
+const tc=document.createElement('canvas');tc.width=tc.height=512;const g=tc.getContext('2d');
+g.fillStyle='#9fe0c4';g.fillRect(0,0,512,512);g.strokeStyle='#ffffff';g.lineWidth=10;
+for(let i=0;i<=4;i++){g.beginPath();g.moveTo(i*128,0);g.lineTo(i*128,512);g.stroke();g.beginPath();g.moveTo(0,i*128);g.lineTo(512,i*128);g.stroke();}
+const tt=new THREE.CanvasTexture(tc);tt.colorSpace=THREE.SRGBColorSpace;tt.wrapS=tt.wrapT=THREE.RepeatWrapping;tt.repeat.set(5,4);
+const wall=new THREE.Mesh(new THREE.PlaneGeometry(30,24),new THREE.MeshLambertMaterial({map:tt}));wall.position.set(0,10,-7);scene.add(wall);
+const wall2=new THREE.Mesh(new THREE.PlaneGeometry(30,24),new THREE.MeshLambertMaterial({map:tt}));wall2.rotation.y=Math.PI/2;wall2.position.set(-9,10,4);scene.add(wall2);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(40,40),lam('#ffb877'));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+// platform
+const plat=new THREE.Mesh(new THREE.BoxGeometry(7,0.8,7),lam('#3b4250'));plat.position.y=0.4;plat.receiveShadow=true;plat.castShadow=true;scene.add(plat);
+
+// sector extrude helper (cutaway: missing wedge faces camera)
+const CUT=Math.PI*0.55, START=-Math.PI/2-CUT/2; // removed wedge
+function ringSector(rOut,rIn,h,mat){
+  const s=new THREE.Shape();const a0=START+CUT,a1=START+Math.PI*2;
+  s.absarc(0,0,rOut,a0,a1,false);
+  if(rIn>0){s.lineTo(Math.cos(a1)*rIn,Math.sin(a1)*rIn);s.absarc(0,0,rIn,a1,a0,true);}else{s.lineTo(0,0);}
+  s.closePath();
+  const geo=new THREE.ExtrudeGeometry(s,{depth:h,bevelEnabled:false,curveSegments:48});
+  geo.rotateX(-Math.PI/2);
+  const m=new THREE.Mesh(geo,mat);m.castShadow=true;m.receiveShadow=true;return m;
+}
+const steel=lam('#dfe4ea'),steelD=lam('#b9c1cb'),edge=lam('#9aa3ad');
+const tank=new THREE.Group();tank.position.y=0.8;scene.add(tank);
+const R=2.4,TH=0.18,TH_H=3.6;
+tank.add(ringSector(R,R-TH,TH_H,steel));
+const bottom=ringSector(R,0,0.2,steelD);tank.add(bottom);
+// legs / base ring
+const baseRing=new THREE.Mesh(new THREE.CylinderGeometry(R*0.9,R*0.95,0.3,40),lam('#6b7480'));baseRing.position.y=-0.0;tank.add(baseRing);
+// rim
+const rim=ringSector(R+0.08,R-TH-0.02,0.12,edge);rim.position.y=TH_H;tank.add(rim);
+
+// gum mass (liquid) — scale y with level
+const massMat=new THREE.MeshLambertMaterial({color:'#f2dcb8',transparent:true,opacity:0.93});
+const mass=ringSector(R-TH-0.01,0,1,massMat);mass.position.y=0.2;mass.castShadow=false;tank.add(mass);
+
+// shaft + blades
+const rotor=new THREE.Group();tank.add(rotor);
+const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,4.6,16),lam('#8e99a6'));shaft.position.y=2.6;rotor.add(shaft);
+const bladeMat=lam('#c7ced6');
+for(let k=0;k<2;k++){const b=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.22,0.5),bladeMat);b.position.y=0.8+k*1.3;b.rotation.y=k*Math.PI/2;b.rotation.x=0.35;b.castShadow=true;rotor.add(b);}
+// motor on top
+const beam=new THREE.Mesh(new THREE.BoxGeometry(5.6,0.35,0.6),lam('#f39a3d'));beam.position.y=4.95;tank.add(beam);
+const motor=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.9,24),lam('#4a5260'));motor.position.y=5.5;tank.add(motor);
+for(const sx of [-2.7,2.7]){const p=new THREE.Mesh(new THREE.BoxGeometry(0.35,5,0.5),lam('#f39a3d'));p.position.set(sx,2.5,-0.0);p.castShadow=true;tank.add(p);}
+
+// hopper (embudo) above, left
+const hopper=new THREE.Group();hopper.position.set(-0.9,8.2,-0.4);scene.add(hopper);
+const hop=new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.22,1.2,24,1,true),new THREE.MeshLambertMaterial({color:'#ffffff',side:THREE.DoubleSide}));hopper.add(hop);
+// syrup pipe right
+const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,3,16),lam('#9aa3ad'));pipe.rotation.z=Math.PI/2;pipe.position.set(2.6,7.4,-0.4);scene.add(pipe);
+const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.12,0.5,16),lam('#9aa3ad'));nozzle.position.set(1.15,7.2,-0.4);scene.add(nozzle);
+const syrup=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,1,12),new THREE.MeshLambertMaterial({color:'#ffcf5a',transparent:true,opacity:0.9}));scene.add(syrup);
+
+// gum base blocks
+const blocks=[];const blockMat=lam('#efd9a8');
+for(let i=0;i<14;i++){const s=0.42+rnd()*0.2;const b=new THREE.Mesh(new THREE.BoxGeometry(s,s,s),blockMat);b.castShadow=true;
+  const a=START+CUT+0.25+rnd()*(Math.PI*2-CUT-0.5),r=0.5+rnd()*1.4;
+  b.userData={x:Math.cos(a)*r,z:-Math.sin(a)*r,t0:0.3+i*0.12,rot:rnd()*3,land:0.45+rnd()*0.4};scene.add(b);blocks.push(b);}
+// sugar particles
+const sugar=[];const sugarMat=lam('#ffffff');const sg=new THREE.BoxGeometry(0.09,0.09,0.09);
+for(let i=0;i<260;i++){const p=new THREE.Mesh(sg,sugarMat);p.userData={t0:6.4+rnd()*3.0,dx:(rnd()-0.5)*0.5,dz:(rnd()-0.5)*0.5,v:5+rnd()*2};scene.add(p);sugar.push(p);}
+// color drops
+const drops=[];const dropMat=lam('#ff5fa2');
+for(let i=0;i<10;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(0.16,16,12),dropMat);d.userData={t0:8.6+i*0.13,x:0.3+(rnd()-0.5)*0.8,z:-0.3+(rnd()-0.5)*0.6};scene.add(d);drops.push(d);}
+// steam puffs
+const puffs=[];const puffMat=lam('#ffffff');
+for(let i=0;i<16;i++){const p=new THREE.Mesh(new THREE.IcosahedronGeometry(0.35,1),puffMat);p.userData={t0:3.2+i*0.35,x:(rnd()-0.5)*3,z:(rnd()-0.5)*2-0.4,s:0.6+rnd()*0.7};scene.add(p);puffs.push(p);}
+// heat arrows
+const arrows=[];const arrowMat=lam('#e53935');
+for(let i=0;i<3;i++){const a=new THREE.Group();const st=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.6,12),arrowMat);const hd=new THREE.Mesh(new THREE.ConeGeometry(0.2,0.35,16),arrowMat);hd.position.y=0.45;a.add(st,hd);a.userData={x:-0.9+i*0.9};scene.add(a);arrows.push(a);}
+// bubbles on surface
+const bubbles=[];const bubMat=lam('#fff3e0');
+for(let i=0;i<30;i++){const b=new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8),bubMat);const a=START+CUT+0.2+rnd()*(Math.PI*2-CUT-0.4),r=0.3+rnd()*1.8;b.userData={x:Math.cos(a)*r,z:-Math.sin(a)*r,ph:rnd()*6};scene.add(b);bubbles.push(b);}
+
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const ease=x=>x<0.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const cBase=new THREE.Color('#f2dcb8'),cPink=new THREE.Color('#ff8fc0'),cSug=new THREE.Color('#f6e7d0');
+
+// captions
+const WORDS=[];
+function phrase(t0,t1,text){const ws=text.split(' ');const d=(t1-t0)/ws.length;ws.forEach((w,i)=>WORDS.push([t0+i*d,t0+(i+1)*d,w]));}
+phrase(0.2,2.6,'El chicle empieza como una base de goma');
+phrase(3.0,6.0,'Se calienta hasta que se derrite');
+phrase(6.4,9.6,'Luego le echan azúcar, jarabe y colorante');
+phrase(10.0,13.6,'Las aspas lo amasan sin parar');
+const LABELS=[[1.4,3.0,'BASE DE<br>GOMA',-5],[4.2,6.0,'¡SE DERRITE!',4],[7.0,8.4,'AZÚCAR',-4],[8.6,9.8,'COLORANTE',4],[11.2,14.6,'MASA DE<br>CHICLE',-5]];
+const wEl=document.getElementById('word'),lEl=document.getElementById('label');
+
+window.renderFrame=function(t){
+  // camera
+  const k=ease(clamp(t/14.5));
+  const ang=lerp(-0.25,0.12,k), dist=lerp(15,10.5,k), hgt=lerp(10.5,8.2,k);
+  camera.position.set(Math.sin(ang)*dist,hgt,Math.cos(ang)*dist);
+  camera.lookAt(0,lerp(3.6,3.0,k),0);
+  // blocks fall and melt
+  const melt=clamp((t-3.2)/2.8);
+  blocks.forEach(b=>{const u=b.userData;const ft=t-u.t0;
+    if(ft<0){b.visible=false;return;}b.visible=melt<0.98;
+    const y=Math.max(0.8+0.2+u.land*0.4, 9-0.5*14*ft*ft);
+    b.position.set(u.x,y+0.0,u.z);b.rotation.set(u.rot+ft*2*(y>1.5?1:0),u.rot,0);
+    const s=1-melt;b.scale.set(1+melt*0.3,Math.max(0.02,s),1+melt*0.3);b.position.y-=melt*0.3;});
+  // level
+  const lvl=0.05+melt*1.0+clamp((t-6.6)/3)*0.55+clamp((t-8.5)/1.5)*0.15;
+  mass.scale.y=lvl;mass.visible=lvl>0.06;
+  const col=cBase.clone().lerp(cSug,clamp((t-6.8)/2.5)).lerp(cPink,clamp((t-8.8)/2.8));massMat.color.copy(col);
+  // rotor
+  const spin=t<9.8?t*0.6:(9.8*0.6+(t-9.8)*(0.6+ (t-9.8)*0.9));
+  rotor.rotation.y=spin;
+  // bubbles on surface while melting/mixing
+  const surf=0.8+0.2+lvl;
+  bubbles.forEach(b=>{const u=b.userData;const on=t>3.6;b.visible=on&&lvl>0.3;
+    const a=Math.atan2(-u.z,u.x)+ (t>9.8?(t-9.8)*0.8:0);const r=Math.hypot(u.x,u.z);
+    b.position.set(Math.cos(a)*r,surf+0.02,-Math.sin(a)*r);const s=0.5+0.5*Math.abs(Math.sin(t*3+u.ph));b.scale.setScalar(s);
+    b.material.color.copy(col).offsetHSL(0,0,0.06);});
+  // sugar stream
+  sugar.forEach(p=>{const u=p.userData;const ft=t-u.t0;const y=7.6-u.v*ft;p.visible=ft>0&&y>surf;
+    p.position.set(-0.9+u.dx*(1+ft),y,-0.4+u.dz*(1+ft));});
+  // syrup stream
+  const syOn=t>7.4&&t<9.4;syrup.visible=syOn;
+  if(syOn){const top=6.95;const grow=clamp((t-7.4)/0.25);const bottomY=lerp(top,surf,grow);const end=clamp((t-9.15)/0.25);const topY=lerp(top,surf,end);
+    syrup.scale.y=Math.max(0.01,topY-bottomY);syrup.position.set(1.15,(topY+bottomY)/2,-0.4);}
+  // drops
+  drops.forEach(d=>{const u=d.userData;const ft=t-u.t0;const y=7.8-0.5*12*ft*ft;d.visible=ft>0&&y>surf;d.position.set(u.x,y,u.z);});
+  // steam
+  puffs.forEach(p=>{const u=p.userData;const ft=(t-u.t0);const life=2.2;p.visible=ft>0&&ft<life&&t<14.8;
+    const q=ft/life;p.position.set(u.x*0.6,surf+0.3+q*3.4,u.z*0.6-0.6);p.scale.setScalar(u.s*(0.4+q*1.2)*(q<0.85?1:(1-q)/0.15));});
+  // heat arrows
+  arrows.forEach((a,i)=>{const on=t>3.0&&t<6.4;a.visible=on;const q=((t*0.9+i*0.33)%1);a.position.set(a.userData.x*0.7,1.1+q*1.2,1.5);a.scale.setScalar(on?1:0.01);});
+  renderer.render(scene,camera);
+  // captions
+  let w='';for(const x of WORDS){if(t>=x[0]&&t<x[1]){w=x[2];break;}}
+  wEl.textContent=w;
+  let lab=null;for(const L of LABELS){if(t>=L[0]&&t<L[1]){lab=L;break;}}
+  if(lab){const q=clamp((t-lab[0])/0.18);const pop=q<1?(0.6+0.5*Math.sin(q*Math.PI*0.75)):1;lEl.innerHTML=lab[2];lEl.style.transform='rotate('+lab[3]+'deg) scale('+pop+')';lEl.style.display='block';}
+  else lEl.style.display='none';
+};
+window.renderFrame(0);
+</script>
+</body>
+</html>

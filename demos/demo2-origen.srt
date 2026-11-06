@@ -1,0 +1,15 @@
+1
+00:00:00,300 --> 00:00:03,600
+Todo empieza en la selva de México
+
+2
+00:00:04,000 --> 00:00:07,400
+Con un machete se hacen cortes en zigzag
+
+3
+00:00:07,800 --> 00:00:11,500
+Por ellos baja una savia blanca: el látex
+
+4
+00:00:12,300 --> 00:00:14,900
+Se hierve hasta que espesa
