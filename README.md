@@ -135,7 +135,7 @@ Las escenas se programan en **Three.js** (3D en el navegador) y se graban fotogr
 | **Node.js 18 o superior** | Ejecutar `render.js` y gestionar paquetes | nodejs.org (o ya instalado en la nube de Claude Code) |
 | **three@0.160.0** | Motor 3D de las escenas | `npm install three@0.160.0` |
 | **@fontsource/montserrat@5.0.16** | Fuente Montserrat sin depender de internet | `npm install @fontsource/montserrat@5.0.16` |
-| **playwright** + **Chromium** | Navegador automático para grabar los fotogramas | `npm install playwright` y `npx playwright install chromium` (en la nube de Claude Code ya vienen instalados: no reinstalar) |
+| **playwright** + **Chromium** | Navegador automático para grabar los fotogramas | `npm install playwright` y `npx playwright install chromium` (en la nube de Claude Code Chromium ya viene instalado y `render.js` lo usa solo desde `/opt/pw-browsers/chromium`: no reinstalar) |
 | **ffmpeg** | Unir los fotogramas en el vídeo MP4 | `apt-get install -y ffmpeg` (Linux), `brew install ffmpeg` (Mac) o ffmpeg.org (Windows) |
 | **CapCut para ordenador** | Voz (texto a voz), música y montaje final | capcut.com (lo usa el propietario) |
 

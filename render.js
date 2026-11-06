@@ -11,7 +11,10 @@ const fs = require('fs');
   const seconds = Number(process.argv[4] || 15);
   const fps = 30;
 
-  const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
+  // En la nube de Claude Code, Chromium ya está instalado en /opt/pw-browsers/chromium.
+  // En otro ordenador: npx playwright install chromium (o define CHROMIUM_PATH).
+  const exe = process.env.CHROMIUM_PATH || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+  const browser = await chromium.launch({ executablePath: exe, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
   const page = await browser.newPage({ viewport: { width: 720, height: 1280 } });
   page.on('pageerror', e => console.log('ERROR en la escena:', e.message));
   await page.goto('file://' + scene);
