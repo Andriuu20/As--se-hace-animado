@@ -1,0 +1,259 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face{font-family:M;font-weight:600;src:url(../../../node_modules/@fontsource/montserrat/files/montserrat-latin-600-normal.woff2)}
+@font-face{font-family:M;font-weight:800;src:url(../../../node_modules/@fontsource/montserrat/files/montserrat-latin-800-normal.woff2)}
+html,body{margin:0;width:720px;height:1280px;overflow:hidden;background:#000}
+canvas{display:block}
+#tag{position:absolute;left:36px;top:70px;font-family:M;font-weight:800;font-size:19px;letter-spacing:3px;color:#fff;
+  background:rgba(20,16,10,.45);padding:10px 16px;border-radius:10px}
+#tag b{color:#FFD54A}
+#cap{position:absolute;left:44px;right:44px;top:1010px;text-align:center;font-family:M;font-weight:800;font-size:38px;line-height:1.25;color:#fff;
+  text-shadow:0 3px 0 rgba(0,0,0,.55),0 0 18px rgba(0,0,0,.45)}
+#cap span{opacity:0;display:inline-block;transform:translateY(10px)}
+#cap span.on{opacity:1;transform:none}
+#cap span.k{color:#FFD54A}
+.call{position:absolute;font-family:M;font-weight:800;font-size:24px;letter-spacing:2px;color:#1b1408;background:#FFD54A;padding:8px 14px;border-radius:8px;white-space:nowrap}
+.dot{position:absolute;width:14px;height:14px;border-radius:7px;background:#FFD54A;box-shadow:0 0 0 5px rgba(255,213,74,.35)}
+.line{position:absolute;height:3px;background:#FFD54A;transform-origin:0 50%}
+#fade{position:absolute;inset:0;background:#fff;opacity:0}
+</style>
+</head>
+<body>
+<div id="tag">CÓMO SE HACE EL CHICLE · <b>04 LA FORMA</b></div>
+<div id="cap"></div>
+<div id="dot" class="dot"></div><div id="line" class="line"></div><div id="call" class="call"></div>
+<div id="fade"></div>
+<script src="../../../node_modules/three/build/three.min.js"></script>
+<script>
+const W=720,H=1280;
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(W,H);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#d9e6ee');scene.fog=new THREE.Fog('#d9e6ee',18,60);
+const camera=new THREE.PerspectiveCamera(40,W/H,0.1,300);
+scene.add(new THREE.HemisphereLight(0xffffff,0xb9c7d6,1.15));
+const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,far:60});scene.add(sun);scene.add(sun.target);
+let seed=41;const rnd=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
+const flat=(c,o={})=>new THREE.MeshLambertMaterial(Object.assign({color:c,flatShading:true},o));
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t,ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+const back=x=>{const c=1.70158;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2);};
+const v3=(x,y,z)=>new THREE.Vector3(x,y,z);
+const box=(w,h,d,c,p)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),typeof c==='string'?flat(c):c);m.castShadow=true;m.receiveShadow=true;(p||scene).add(m);return m;};
+const cyl=(rt,rb,h,c,p,seg=16)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),typeof c==='string'?flat(c):c);m.castShadow=true;m.receiveShadow=true;(p||scene).add(m);return m;};
+
+// nave
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(80,40),flat('#c9d3da'));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;floor.position.x=10;scene.add(floor);
+box(80,14,0.3,'#eef3f6').position.set(10,7,-6);
+for(let i=0;i<16;i++){box(2.2,3,0.1,'#bfe0f2').position.set(-12+i*4,8,-5.8);box(0.3,14,0.5,'#b8c4cd').position.set(-14+i*4,7,-5.7);}
+const ROSA='#ff79b3';const ropeMat=flat(ROSA),ropeMat2=flat('#ff6aa8');
+
+// ---------- EXTRUSORA (x=0) ----------
+const BY=2.0;
+const ex=new THREE.Group();scene.add(ex);
+const stand=box(3.6,1.4,1.4,'#4a5260',ex);stand.position.set(-0.4,0.7,0);
+const barrel=new THREE.Mesh(new THREE.CylinderGeometry(0.58,0.58,3.2,28,1,true,Math.PI,Math.PI),new THREE.MeshLambertMaterial({color:'#dfe4ea',side:THREE.DoubleSide}));
+barrel.rotation.z=Math.PI/2;barrel.position.set(-0.4,BY,0);barrel.castShadow=true;ex.add(barrel);
+const cutEdge=new THREE.Mesh(new THREE.TorusGeometry(0.58,0.04,6,28,Math.PI),flat('#f39a3d'));cutEdge.rotation.y=Math.PI/2;cutEdge.position.set(-2.0,BY,0);ex.add(cutEdge);
+const cutEdge2=cutEdge.clone();cutEdge2.position.x=1.2;ex.add(cutEdge2);
+const inner=cyl(0.36,0.36,3.1,ROSA,ex,20);inner.rotation.z=Math.PI/2;inner.position.set(-0.4,BY,0);
+class Helix extends THREE.Curve{getPoint(u,o=new THREE.Vector3()){const a=u*7.5*Math.PI*2;return o.set(-1.95+3.05*u,Math.cos(a)*0.4,Math.sin(a)*0.4);}}
+const screw=new THREE.Group();screw.position.set(0,BY,0);ex.add(screw);
+const flight=new THREE.Mesh(new THREE.TubeGeometry(new Helix(),500,0.07,6),flat('#9aa3ad'));flight.castShadow=true;screw.add(flight);
+const motor=box(0.9,1.0,1.0,'#f39a3d',ex);motor.position.set(-2.45,BY,0);
+const hopper=new THREE.Mesh(new THREE.CylinderGeometry(0.95,0.3,1.1,20,1,true),new THREE.MeshLambertMaterial({color:'#dfe4ea',side:THREE.DoubleSide}));hopper.position.set(-1.3,BY+1.05,0);ex.add(hopper);
+const lump=new THREE.Mesh(new THREE.IcosahedronGeometry(0.85,2),ropeMat);lump.position.set(-1.3,BY+1.5,0);lump.castShadow=true;ex.add(lump);
+const die=box(0.26,1.4,1.5,'#8e99a6',ex);die.position.set(1.32,BY,0);
+const LANES=[-0.54,-0.18,0.18,0.54];
+LANES.forEach(z=>{const n=cyl(0.16,0.16,0.14,'#5d6773',ex,12);n.rotation.z=Math.PI/2;n.position.set(1.5,BY,z);});
+
+// ---------- CINTA, GUÍAS, TÚNEL ----------
+const belt1=box(7.8,0.12,1.5,'#f2f2ee');belt1.position.set(5.9,1.0,0);
+const frame1=box(7.9,0.5,1.56,'#8e99a6');frame1.position.set(5.9,0.7,0);
+[2.2,9.6].forEach(x=>[-0.7,0.7].forEach(z=>box(0.12,0.5,0.12,'#5d6773').position.set(x,0.25,z)));
+const slats=[];for(let i=0;i<26;i++){const s=box(0.05,0.01,1.46,'#d4d6d0');s.castShadow=false;slats.push(s);}
+// guías (rodillos verticales a los lados de cada cuerda)
+const GX=6.5;const guides=[];
+box(0.3,0.1,1.7,'#5d6773').position.set(GX,1.62,0);
+LANES.forEach(z=>[-1,1].forEach(s=>{const g=cyl(0.07,0.07,0.36,'#c7ced6',scene,10);g.position.set(GX,1.26,z+s*0.15);guides.push(g);
+  const rod=cyl(0.02,0.02,0.36,'#5d6773',scene,6);rod.position.set(GX,1.5,z+s*0.15);}));
+// túnel de frío
+const TX0=9.8,TX1=14.5,tun=new THREE.Group();scene.add(tun);
+const ice='#cfe9f6';
+box(TX1-TX0,0.12,1.8,ice,tun).position.set((TX0+TX1)/2,3.45,0);
+box(TX1-TX0,3.0,0.12,'#b8dcef',tun).position.set((TX0+TX1)/2,1.95,-0.9);
+box(0.12,3.0,1.8,ice,tun).position.set(TX1,1.95,0);
+const tl=box(0.12,1.9,1.8,ice,tun);tl.position.set(TX0,2.5,0);
+box(TX1-TX0+0.1,0.12,0.12,'#f39a3d',tun).position.set((TX0+TX1)/2,3.45,0.9);
+[[TX0,0.9],[TX1,0.9]].forEach(p=>box(0.14,3.0,0.14,'#f39a3d',tun).position.set(p[0],1.95,p[1]));
+const TB=[1.03,1.83,2.63];const tslats=[];
+TB.forEach((y,i)=>{box(4.2,0.08,0.9,'#f2f2ee',tun).position.set(12.1,y-0.04,0);
+  for(let k=0;k<12;k++){const s=box(0.04,0.01,0.86,'#d4d6d0',tun);s.castShadow=false;s.userData={y,dir:i%2?-1:1,ph:k/12};tslats.push(s);}});
+[[14.0,1.5],[10.2,2.3]].forEach(p=>{const r=cyl(0.34,0.34,0.9,'#9aa3ad',scene,20);r.rotation.x=Math.PI/2;r.position.set(p[0],p[1],0);});
+const cold=[];for(let i=0;i<46;i++){const c=new THREE.Mesh(new THREE.OctahedronGeometry(0.06,0),new THREE.MeshBasicMaterial({color:'#9fd8ff',transparent:true,opacity:0.85}));c.userData={x:rnd(),y:0.9+rnd()*2.4,z:(rnd()-.5)*1.4,ph:rnd()*6};scene.add(c);cold.push(c);}
+
+// ---------- CUERDAS ----------
+const P=(x,y,z)=>v3(x,y,z);
+function rope(points,r,mat){const c=new THREE.CatmullRomCurve3(points,false,'centripetal');const g=new THREE.TubeGeometry(c,Math.round(c.getLength()*40),r,8,false);
+  const m=new THREE.Mesh(g,mat);m.castShadow=true;scene.add(m);m.userData.n=g.index.count;return m;}
+const RY=1.15;
+const others=[0,1,3].map(i=>{const z=LANES[i];return rope([P(1.5,BY,z),P(1.95,1.72,z),P(2.5,RY,z),P(4.5,RY,z),P(GX,RY,z),P(8.0,RY,z*0.6-0.6),P(9.0,RY,-2.2),P(9.6,RY,-2.8),P(16,RY,-2.8)],0.1,ropeMat);});
+const mz=LANES[2];
+const ropeA=rope([P(1.5,BY,mz),P(1.95,1.72,mz),P(2.5,RY,mz),P(4.5,RY,mz),P(GX,RY,mz)],0.1,ropeMat);
+const ropeB=rope([P(GX,RY-0.02,mz),P(8.2,RY-0.02,0.06),P(9.8,RY-0.02,0),P(13.8,RY-0.02,0),P(14.25,1.22,0),P(14.38,1.5,0),P(14.25,1.78,0),P(13.8,1.92,0),
+  P(10.4,1.92,0),P(9.95,2.02,0),P(9.82,2.3,0),P(9.95,2.58,0),P(10.4,2.72,0),P(14.0,2.72,0),P(14.7,2.55,0),P(15.25,1.75,0),P(15.7,1.42,0),P(16.1,1.42,0)],0.09,ropeMat2);
+
+// ---------- CORTADORA Y ENVOLVEDORA (x≈16.6) ----------
+const CX=16.6,CY=1.42;
+const cut=new THREE.Group();scene.add(cut);
+const cm='#8e99a6';
+box(2.0,0.14,1.3,cm,cut).position.set(CX,0.9,0);box(2.0,0.14,0.55,'#f39a3d',cut).position.set(CX,2.35,-0.38);
+box(2.0,1.6,0.12,'#6b7480',cut).position.set(CX,1.62,-0.6);box(0.12,1.6,1.3,cm,cut).position.set(CX+1.0,1.62,0);
+const cl=box(0.12,1.6,1.3,cm,cut);cl.position.set(CX-1.0,1.62,0);
+[[-0.9,-0.55],[0.9,-0.55],[-0.9,0.55],[0.9,0.55]].forEach(p=>box(0.12,0.85,0.12,'#5d6773',cut).position.set(CX+p[0],0.42,p[1]));
+const miniBelt=box(1.8,0.06,0.5,'#f2f2ee',cut);miniBelt.position.set(CX,CY-0.1,0);
+const knife=new THREE.Group();knife.position.set(CX-0.5,CY+0.32,0.3);cut.add(knife);
+const disc=cyl(0.34,0.34,0.03,'#d9dde2',knife,28);disc.rotation.x=Math.PI/2;
+const notch=box(0.36,0.06,0.05,'#6b7480',knife);notch.position.x=0.17;
+const axle=cyl(0.06,0.06,0.12,'#4a5260',knife,10);axle.rotation.x=Math.PI/2;
+// papel con dibujos propios
+const pc=document.createElement('canvas');pc.width=pc.height=64;const g=pc.getContext('2d');g.fillStyle='#fffaf0';g.fillRect(0,0,64,64);
+g.fillStyle='#ff79b3';for(let i=0;i<4;i++)for(let j=0;j<4;j++){if((i+j)%2)continue;g.beginPath();g.arc(8+i*16,8+j*16,5,0,7);g.fill();}
+g.fillStyle='#FFD54A';g.fillRect(0,28,64,8);
+const ptex=new THREE.CanvasTexture(pc);ptex.colorSpace=THREE.SRGBColorSpace;
+const paperMat=new THREE.MeshLambertMaterial({map:ptex});const twistMat=flat('#FFD54A');
+function wrapped(special){const gr=new THREE.Group();const b=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.16,0.16),special?flat('#ff6fae',{emissive:'#7a1040'}):paperMat);b.castShadow=true;gr.add(b);
+  [-1,1].forEach(s=>{const c=new THREE.Mesh(new THREE.ConeGeometry(0.075,0.12,6),special?flat('#ffffff'):twistMat);c.rotation.z=-s*Math.PI/2;c.position.x=s*0.18;gr.add(c);});
+  gr.userData.body=b;scene.add(gr);return gr;}
+// cada taquito: se apoya en su papel, el papel se dobla por delante y por detrás, y se retuercen las puntas
+const PIECES=5,PER=1.1,PH_=0.124,HZ=0.063;
+const foldMat=new THREE.MeshLambertMaterial({map:ptex,side:THREE.DoubleSide,emissive:'#6a6a6a',emissiveMap:ptex});
+const sideGeo=new THREE.PlaneGeometry(0.26,PH_);sideGeo.translate(0,PH_/2,0);
+const topGeo=new THREE.PlaneGeometry(0.26,0.075);topGeo.translate(0,0.0375,0);
+const pieces=[];for(let i=0;i<PIECES;i++){const gr=new THREE.Group();scene.add(gr);
+  const b=box(0.22,0.12,0.12,ropeMat2,gr);
+  const base=new THREE.Mesh(new THREE.PlaneGeometry(0.26,0.126),foldMat);base.rotation.x=-Math.PI/2;base.position.y=-0.063;gr.add(base);
+  const flaps=[1,-1].map(s=>{const p=new THREE.Group();p.position.set(0,-0.063,s*HZ);gr.add(p);
+    const side=new THREE.Mesh(sideGeo,foldMat);p.add(side);
+    const tp=new THREE.Group();tp.position.y=PH_;p.add(tp);tp.add(new THREE.Mesh(topGeo,foldMat));return {p,tp,s};});
+  const ends=[-1,1].map(s=>{const c=new THREE.Mesh(new THREE.ConeGeometry(0.075,0.12,6),twistMat);c.rotation.z=-s*Math.PI/2;c.position.x=s*0.17;gr.add(c);return c;});
+  pieces.push({gr,base,flaps,ends});}
+// tira de papel que entra por debajo de la cinta
+const strip=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.52),foldMat);strip.rotation.x=-Math.PI/2;strip.position.set(CX-0.2,CY-0.066,0);scene.add(strip);
+const stripRoll=cyl(0.16,0.16,0.56,'#fffaf0',cut,18);stripRoll.rotation.x=Math.PI/2;stripRoll.position.set(CX-0.5,CY-0.32,0);
+// rampa, cubo y montón
+const chute=box(1.3,0.06,0.5,'#c7ced6');chute.position.set(CX+1.55,1.05,0);chute.rotation.z=-0.45;
+const TUBX=CX+2.4;
+const tub=new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.65,0.85,28,1,true),new THREE.MeshLambertMaterial({color:'#ffffff',side:THREE.DoubleSide}));tub.position.set(TUBX,0.43,0);tub.castShadow=true;scene.add(tub);
+const tubRim=new THREE.Mesh(new THREE.TorusGeometry(0.75,0.04,6,28),flat('#e9eef2'));tubRim.rotation.x=Math.PI/2;tubRim.position.set(TUBX,0.86,0);scene.add(tubRim);
+const pile=new THREE.Mesh(new THREE.SphereGeometry(0.7,18,10,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({map:ptex}));pile.position.set(TUBX,0.3,0);scene.add(pile);
+ptex.wrapS=ptex.wrapT=THREE.RepeatWrapping;
+const falling=[];for(let i=0;i<24;i++){const w=wrapped(false);w.userData={ph:i/24,dz:(rnd()-.5)*0.6,dx:(rnd()-.5)*0.5,r:rnd()*6};falling.push(w);}
+// caja de cartón y camión
+const BXX=TUBX+1.7;
+const cbox=new THREE.Group();scene.add(cbox);
+const card='#c99a5e';
+box(0.9,0.06,0.7,card,cbox).position.y=0.03;
+[[0,0.3,0.35,0.9,0.6,0.04],[0,0.3,-0.35,0.9,0.6,0.04],[0.45,0.3,0,0.04,0.6,0.7],[-0.45,0.3,0,0.04,0.6,0.7]].forEach(w=>box(w[3],w[4],w[5],card,cbox).position.set(w[0],w[1],w[2]));
+const flapGeo=new THREE.BoxGeometry(0.9,0.03,0.35);flapGeo.translate(0,0,0.175);
+const flaps=[-1,1].map(s=>{const f=new THREE.Mesh(flapGeo,flat('#b88a52'));f.position.set(0,0.6,-s*0.35);f.rotation.y=s>0?0:Math.PI;cbox.add(f);return f;});
+const boxFill=new THREE.Mesh(new THREE.BoxGeometry(0.84,0.4,0.64),new THREE.MeshLambertMaterial({map:ptex}));boxFill.position.y=0.3;cbox.add(boxFill);
+const star=wrapped(true);
+const truck=new THREE.Group();truck.position.set(BXX+2.8,0,0);scene.add(truck);
+const cont=box(2.8,1.9,1.6,'#ffffff',truck);cont.position.set(0,1.45,0);
+const stripe=box(2.82,0.3,1.62,'#ff79b3',truck);stripe.position.set(0,1.2,0);
+const cab=box(1.0,1.3,1.5,'#f39a3d',truck);cab.position.set(1.95,1.05,0);
+const win=box(0.05,0.5,1.2,'#bfe0f2',truck);win.position.set(2.46,1.35,0);
+const wheels=[];[-0.9,0.9,1.9].forEach(x=>[-0.8,0.8].forEach(z=>{const w=cyl(0.32,0.32,0.22,'#2b2d30',truck,14);w.rotation.x=Math.PI/2;w.position.set(x,0.32,z);wheels.push(w);}));
+const truckBack=box(0.05,1.9,1.6,'#e9eef2',truck);truckBack.position.set(-1.42,1.45,0);
+
+// ---------- TEXTOS ----------
+const PH=[
+ [0.3,2.8,[['¿Cómo'],['se'],['convierte'],['esta'],['masa'],['en'],['chicles?',1]]],
+ [3.2,6.6,[['La'],['extrusora',1],['la'],['empuja'],['por'],['una'],['boquilla'],['con'],['agujeros.']]],
+ [7.2,9.8,[['Y'],['sale'],['en'],['cuerdas,',1],['como'],['plastilina'],['por'],['un'],['molde.']]],
+ [10.2,12.8,[['Las'],['cuerdas'],['viajan'],['por'],['una'],['cinta',1],['sin'],['parar.']]],
+ [13.2,15.8,[['Unas'],['guías'],['las'],['estiran'],['hasta'],['el'],['grosor',1],['justo.']]],
+ [16.2,19.8,[['Entran'],['en'],['un'],['túnel',1],['frío',1],['que'],['las'],['lleva'],['en'],['zigzag.']]],
+ [20.2,22.8,[['Así'],['se',1],['enfrían',1],['y'],['dejan'],['de'],['estar'],['blandas.']]],
+ [23.2,26.8,[['Una'],['máquina'],['las'],['corta'],['en'],['taquitos…',1]]],
+ [27.2,30.8,[['…y'],['en'],['el'],['mismo'],['momento'],['los'],['envuelve',1],['en'],['papel.']]],
+ [31.2,34.8,[['Cada'],['segundo'],['caen'],['un',1],['montón',1],['de'],['chicles'],['envueltos.']]],
+ [35.2,39.6,[['Y'],['ahora…'],['rumbo'],['a'],['tu',1],['boca.',1]]]];
+const CALL=[
+ [3.7,6.8,'EXTRUSORA',()=>v3(-0.9,BY+0.45,0),-1],
+ [7.6,10.0,'CUERDAS DE CHICLE',()=>v3(2.6,RY+0.1,0.45),-1,-190],
+ [13.7,16.0,'GUÍAS',()=>v3(GX,1.62,0),1,-170],
+ [16.8,20.0,'TÚNEL DE FRÍO',()=>v3(12.1,3.5,0.9),-1,-120],
+ [23.7,27.0,'CORTADORA',()=>v3(CX-0.5,CY+0.62,0.3),-1,-170],
+ [27.7,31.0,'ENVOLTORIO',()=>v3(CX+0.3,CY+0.08,0),1,-260]];
+const cap=document.getElementById('cap'),call=document.getElementById('call'),dot=document.getElementById('dot'),line=document.getElementById('line'),fade=document.getElementById('fade');
+let lastPh=-1;
+function captions(t){let pi=PH.findIndex(p=>t>=p[0]&&t<p[1]+0.35);
+  if(pi!==lastPh){cap.innerHTML=pi<0?'':PH[pi][2].map(w=>'<span'+(w[1]?' class="k"':'')+'>'+w[0]+'</span>').join(' ');lastPh=pi;}
+  if(pi>=0){const p=PH[pi];const n=p[2].length;const d=(p[1]-p[0]-0.4)/n;cap.querySelectorAll('span').forEach((s,i)=>{const on=t>=p[0]+i*d;s.className=(p[2][i][1]?'k ':'')+(on?'on':'');});
+    cap.style.opacity=t>p[1]?clamp(1-(t-p[1])/0.35):1;}
+  const c=CALL.find(c=>t>=c[0]&&t<c[1]);
+  if(c){const q=clamp((t-c[0])/0.3);const out=clamp((c[1]-t)/0.25);const pr=c[3]().project(camera);const x=(pr.x+1)/2*W,y=(1-pr.y)/2*H;
+    const ex=x+c[4]*150,ey=y+(c[5]===undefined?-150:c[5]);dot.style.left=(x-7)+'px';dot.style.top=(y-7)+'px';
+    const L=Math.hypot(ex-x,ey-y)*q;line.style.left=x+'px';line.style.top=(y-1.5)+'px';line.style.width=L+'px';line.style.transform='rotate('+Math.atan2(ey-y,ex-x)+'rad)';
+    call.textContent=c[2];call.style.left=Math.max(24,Math.min(W-24-call.offsetWidth,(c[4]>0?ex:ex-call.offsetWidth)))+'px';call.style.top=(ey-22)+'px';
+    const op=Math.min(q,out);[dot,line,call].forEach(e=>e.style.opacity=op);call.style.transform='scale('+(0.8+0.2*q)+')';}
+  else [dot,line,call].forEach(e=>e.style.opacity=0);}
+function camTo(t,keys){let i=0;while(i<keys.length-1&&t>=keys[i+1][0])i++;const b=keys[i],a=keys[Math.max(0,i-1)];
+  const k=ease(clamp((t-b[0])/(b[3]||1.0)));camera.position.copy(a[1]).lerp(b[1],k);camera.lookAt(a[2].clone().lerp(b[2],k));}
+const CAM=[[0,v3(-0.6,4.8,6.2),v3(-1.1,2.8,0)],[3,v3(-0.2,2.9,7.6),v3(-0.2,2.0,0)],[7,v3(3.4,4.4,4.6),v3(2.6,1.3,0)],
+  [10,v3(5.0,4.6,4.8),v3(4.6,1.1,0)],[13,v3(7.6,2.9,4.6),v3(6.5,1.2,0)],[16,v3(12.1,2.4,9.6),v3(12.1,2.1,0),1.4],
+  [20,v3(14.6,2.6,5.0),v3(14.8,1.9,0)],[23,v3(16.3,2.3,4.4),v3(16.3,1.6,0)],[27,v3(16.9,2.45,1.05),v3(16.85,1.42,0)],
+  [31,v3(18.7,2.8,5.2),v3(18.6,0.9,0)],[35,v3(21.8,3.6,13.5),v3(22.4,1.3,0),1.3]];
+const tmp=v3(0,0,0);
+
+window.renderFrame=function(t){
+  camTo(t,CAM);sun.position.set(camera.position.x+5,12,9);sun.target.position.set(camera.position.x,0,0);
+  // extrusora
+  screw.rotation.x=-t*3.2;lump.scale.setScalar(Math.max(0.35,1-clamp((t-2.5)/14)*0.6));lump.rotation.y=t*0.4;lump.position.y=BY+1.5-clamp((t-2.5)/14)*0.4;
+  // cuerdas que salen
+  const grow=clamp((t-3.6)/3.8);
+  [ropeA,...others].forEach(m=>{const n=m.userData.n;m.geometry.setDrawRange(0,Math.floor(n*(m===ropeA?grow:clamp((t-3.6)/7))/6)*6);});
+  slats.forEach((s,i)=>{const x=2.05+((i/26)*7.7+t*0.9)%7.7;s.position.set(x,1.065,0);});
+  tslats.forEach(s=>{const u=s.userData;const q=(u.ph+t*0.25*u.dir+10)%1;s.position.set(10.1+q*4.0,u.y+0.005,0);});
+  guides.forEach((g,i)=>g.rotation.y=t*6*(i%2?1:-1));
+  cold.forEach(c=>{const u=c.userData;const x=TX0+0.1+((u.x-t*0.08)%1+1)%1*(TX1-TX0-0.2);c.position.set(x,u.y+Math.sin(t*1.5+u.ph)*0.08,u.z);c.rotation.set(t,t*1.3,0);});
+  // cortadora
+  knife.rotation.z=-t*9;
+  const s0=t/PER;
+  pieces.forEach((pc,i)=>{const q=((s0+i)/PIECES)%1;const x=CX-0.5+q*1.4;const d=x-CX;
+    pc.gr.position.set(x,CY,0);
+    const paper=d>-0.05;pc.base.visible=paper;
+    const f=clamp((d-0.1)/0.3),f1=ease(clamp(f/0.5)),f2=ease(clamp((f-0.5)/0.5));
+    pc.flaps.forEach(fl=>{fl.p.visible=paper;fl.p.rotation.x=fl.s*lerp(Math.PI/2,0,f1);fl.tp.rotation.x=-fl.s*lerp(0,Math.PI/2,f2);});
+    const tw=clamp((d-0.42)/0.16);pc.ends.forEach(c=>{c.visible=tw>0;c.scale.setScalar(Math.max(0.001,back(tw)));c.rotation.x=tw*Math.PI*3;});});
+  stripRoll.rotation.z=t*2;
+  // caen al cubo
+  const fill=clamp((t-29)/8);pile.scale.set(1,lerp(0.25,0.85,fill),1);pile.position.y=0.3+fill*0.25;ptex.offset.set(t*0.2,0);
+  falling.forEach(w=>{const u=w.userData;const q=((t*0.9+u.ph)%1);let p;
+    if(q<0.4){const k=q/0.4;p=v3(lerp(CX+1.0,CX+2.0,k),lerp(1.32,0.88,k)+0.08,u.dz*0.3);}
+    else{const k=(q-0.4)/0.6;p=v3(lerp(CX+2.0,TUBX+u.dx,k),lerp(0.96,0.45+fill*0.3,k*k),lerp(u.dz*0.3,u.dz,k));}
+    w.position.copy(p);w.rotation.set(u.r+t*3*(q>0.4?1:0),u.r,q<0.4?-0.45:u.r);});
+  // la bolita-taquito especial salta del cubo a la caja
+  const sk=clamp((t-35.2)/0.9);star.visible=t>35.0&&t<36.5;
+  star.position.set(lerp(TUBX,BXX,sk),lerp(1.0,0.75,sk)+Math.sin(sk*Math.PI)*1.3,0);star.rotation.set(t*4,t*3,0);star.scale.setScalar(1.6+0.2*Math.sin(t*10));
+  const close=clamp((t-36.1)/0.5);
+  flaps[0].rotation.x=lerp(2.3,Math.PI,close);flaps[1].rotation.x=lerp(-2.3,-Math.PI+Math.PI,close);
+  const mv=ease(clamp((t-36.7)/0.9));const tx=truck.position.x;
+  cbox.position.set(lerp(BXX,tx-0.6,mv),Math.sin(mv*Math.PI)*0.9+mv*0.55,0);cbox.visible=t<37.6;
+  const drive=clamp((t-37.9)/2.1);truck.position.x=BXX+2.8+drive*drive*3.5;
+  wheels.forEach(w=>{w.rotation.set(Math.PI/2,-drive*drive*11,0);});
+
+  renderer.render(scene,camera);
+  captions(t);
+  fade.style.opacity=0;
+};
+window.renderFrame(0);
+</script>
+</body>
+</html>

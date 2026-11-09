@@ -26,13 +26,12 @@ Hilo conductor: seguir a **una misma bolita de chicle rosa** en todo su viaje, d
 - Dato: la masa sale calentita, como plastilina.
 - Base: `demos/demo1-mezcladora.html` (pasarla al estilo de textos de la serie).
 
-### 04 · La forma (extrusión, laminado, corte, grageado y envasado)
-- **Extrusora:** la masa sale como una cinta o una cuerda.
-- **Rodillos:** la aplanan; se espolvorea azúcar en polvo para que no se pegue.
-- Dos caminos: **láminas** (cuchillas que cortan tiras) o **bolas** (la cuerda se corta en trozos y unos rodillos los redondean).
-- **Sala de reposo:** se enfrían 1-2 días.
-- **Grageado:** las bolitas giran en bombos y reciben capas de azúcar de colores; luego cera para que brillen.
-- **Envasado:** cinta transportadora, envoltorios y cajas.
+### 04 · La forma (camino del vídeo de referencia: taquitos envueltos)
+- **Extrusora:** un tornillo empuja la masa por una boquilla con agujeros y salen 4 cuerdas con rayas.
+- **Cinta y guías:** las cuerdas viajan por una cinta y unas guías las dejan del grosor justo.
+- **Túnel frío:** la cuerda sube y baja en zigzag por varias cintas hasta enfriarse.
+- **Cortar y envolver:** una máquina la corta en taquitos y los envuelve en papel retorcido; caen a un cubo.
+- (Las grageas, las bolas y las láminas siguen otros caminos: no salen en esta serie.)
 
 ### 05 · En tu boca (el final del viaje)
 - La bolita llega a una tienda y alguien la compra.
@@ -47,7 +46,8 @@ Hilo conductor: seguir a **una misma bolita de chicle rosa** en todo su viaje, d
 - **Demo 2, "el origen" (15 s):** estilo propio de la serie. `demos/demo2-origen.html`, `.mp4`, `.srt`.
 
 ## Pendiente
-- [ ] Dejar el vídeo real de fábrica en `referencias/`.
-- [ ] Confirmar la duración de cada parte (propuesta: 30-40 s).
-- [ ] Guion y storyboard de las 5 partes para aprobar.
-- [ ] Animar las partes 1 a 5 (`escenas/parte1-origen.html`, …) y entregarlas en `salida/` con su `.srt` en `srt/`.
+- [x] Dejar el vídeo real de fábrica en `referencias/`.
+- [x] Confirmar la duración de cada parte: 35-40 s.
+- [x] Guion y storyboard de las 5 partes, aprobados (`guion-storyboard.md`). Es un solo vídeo dividido en 5 partes seguidas.
+- [x] Animar las partes 1 a 5 (`escenas/parte1-origen.html`, `parte2-goma-base`, `parte3-mezcla`, `parte4-forma`, `parte5-boca`) y entregarlas en `salida/` con su `.srt` en `srt/`.
+- [ ] Revisión del propietario y montaje en CapCut.

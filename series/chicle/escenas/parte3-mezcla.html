@@ -1,0 +1,211 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face{font-family:M;font-weight:600;src:url(../../../node_modules/@fontsource/montserrat/files/montserrat-latin-600-normal.woff2)}
+@font-face{font-family:M;font-weight:800;src:url(../../../node_modules/@fontsource/montserrat/files/montserrat-latin-800-normal.woff2)}
+html,body{margin:0;width:720px;height:1280px;overflow:hidden;background:#000}
+canvas{display:block}
+#tag{position:absolute;left:36px;top:70px;font-family:M;font-weight:800;font-size:19px;letter-spacing:3px;color:#fff;
+  background:rgba(20,16,10,.45);padding:10px 16px;border-radius:10px}
+#tag b{color:#FFD54A}
+#cap{position:absolute;left:44px;right:44px;top:1010px;text-align:center;font-family:M;font-weight:800;font-size:38px;line-height:1.25;color:#fff;
+  text-shadow:0 3px 0 rgba(0,0,0,.55),0 0 18px rgba(0,0,0,.45)}
+#cap span{opacity:0;display:inline-block;transform:translateY(10px)}
+#cap span.on{opacity:1;transform:none}
+#cap span.k{color:#FFD54A}
+.call{position:absolute;font-family:M;font-weight:800;font-size:24px;letter-spacing:2px;color:#1b1408;background:#FFD54A;padding:8px 14px;border-radius:8px;white-space:nowrap}
+.dot{position:absolute;width:14px;height:14px;border-radius:7px;background:#FFD54A;box-shadow:0 0 0 5px rgba(255,213,74,.35)}
+.line{position:absolute;height:3px;background:#FFD54A;transform-origin:0 50%}
+#temp{position:absolute;left:56px;top:240px;text-align:left;font-family:M;font-weight:800;font-size:96px;color:#fff;opacity:0;
+  text-shadow:0 5px 0 rgba(0,0,0,.4)}
+#temp small{display:block;font-size:24px;letter-spacing:6px;color:#FFD54A}
+#fade{position:absolute;inset:0;background:#fff;opacity:0}
+</style>
+</head>
+<body>
+<div id="tag">CÓMO SE HACE EL CHICLE · <b>03 LA MEZCLA</b></div>
+<div id="temp"><small>MÁXIMO</small><span id="tv">20</span> °C</div>
+<div id="cap"></div>
+<div id="dot" class="dot"></div><div id="line" class="line"></div><div id="call" class="call"></div>
+<div id="fade"></div>
+<script src="../../../node_modules/three/build/three.min.js"></script>
+<script>
+const W=720,H=1280;
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(W,H);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#d9e6ee');scene.fog=new THREE.Fog('#d9e6ee',22,70);
+const camera=new THREE.PerspectiveCamera(40,W/H,0.1,300);
+scene.add(new THREE.HemisphereLight(0xffffff,0xb9c7d6,1.15));
+const sun=new THREE.DirectionalLight(0xffffff,1.7);sun.position.set(6,13,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-10,right:10,top:10,bottom:-10,far:60});scene.add(sun);
+let seed=31;const rnd=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
+const flat=(c,o={})=>new THREE.MeshLambertMaterial(Object.assign({color:c,flatShading:true},o));
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t,ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+const back=x=>{const c=1.70158;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2);};
+const v3=(x,y,z)=>new THREE.Vector3(x,y,z);
+const box=(w,h,d,c,p)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),typeof c==='string'?flat(c):c);m.castShadow=true;m.receiveShadow=true;if(p)p.add(m);return m;};
+const fall=(t,t0,y0,y1)=>{const ft=t-t0;return ft<0?y0:Math.max(y1,y0-0.5*16*ft*ft);};
+
+// nave
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,40),flat('#c9d3da'));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const wallB=box(60,14,0.3,'#eef3f6');wallB.position.set(0,7,-6);scene.add(wallB);
+for(let i=0;i<8;i++){const w=box(2.2,3,0.1,'#bfe0f2');w.position.set(-14+i*4,8,-5.8);scene.add(w);}
+for(let i=0;i<9;i++){const b=box(0.3,14,0.5,'#b8c4cd');b.position.set(-16+i*4,7,-5.7);scene.add(b);}
+
+// ---------- MEZCLADORA DE DOS ASPAS EN Z ----------
+const steel=flat('#dfe4ea'),steelD=flat('#b9c1cb'),orange=flat('#f39a3d');
+const base=box(4.8,1.3,3.0,'#4a5260');base.position.set(0,0.65,0);scene.add(base);
+const TOP=2.6,RT=1.0,LEN=2.6;
+// la artesa gira (se inclina) sobre su borde delantero
+const pivot=new THREE.Group();pivot.position.set(0,TOP,LEN/2);scene.add(pivot);
+const trough=new THREE.Group();trough.position.set(0,0,-LEN/2);pivot.add(trough);
+const tMat=new THREE.MeshLambertMaterial({color:'#dfe4ea',side:THREE.DoubleSide,flatShading:true});
+[-1,1].forEach(s=>{const c=new THREE.Mesh(new THREE.CylinderGeometry(RT,RT,LEN,28,1,true,Math.PI/2,Math.PI),tMat);c.rotation.x=-Math.PI/2;c.position.set(s*RT,0,0);c.castShadow=true;c.receiveShadow=true;trough.add(c);
+  // borde cortado (color para que se note el corte)
+  const e=new THREE.Mesh(new THREE.TorusGeometry(RT,0.05,6,28,Math.PI),orange);e.rotation.z=Math.PI;e.position.set(s*RT,0,LEN/2);trough.add(e);});
+// pared del fondo con forma de W
+const ws=new THREE.Shape();ws.moveTo(-2*RT-0.1,0.9);ws.lineTo(-2*RT-0.1,0);ws.absarc(-RT,0,RT+0.1,Math.PI,2*Math.PI,false);ws.absarc(RT,0,RT+0.1,Math.PI,2*Math.PI,false);ws.lineTo(2*RT+0.1,0.9);ws.closePath();
+const wb=new THREE.Mesh(new THREE.ShapeGeometry(ws,24),steelD);wb.position.z=-LEN/2;trough.add(wb);
+[-1,1].forEach(s=>{const sw=box(0.12,0.9,LEN,'#dfe4ea',trough);sw.position.set(s*(2*RT+0.04),0.45,0);});
+const lipB=box(4.3,0.12,0.14,orange,trough);lipB.position.set(0,0.9,-LEN/2);
+// rotores en Z
+const rotors=[];const bladeMat=flat('#9aa3ad');
+[-1,1].forEach(s=>{const r=new THREE.Group();r.position.set(s*RT,0,0);trough.add(r);
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,LEN+0.6,10),flat('#6b7480'));sh.rotation.x=Math.PI/2;r.add(sh);
+  const a1=box(0.18,0.8,0.18,bladeMat,r);a1.position.set(0,0.4,-1.05);
+  const a2=box(0.18,0.8,0.18,bladeMat,r);a2.position.set(0,-0.4,1.05);
+  const d=box(0.18,0.18,2.5,bladeMat,r);d.rotation.x=Math.atan2(1.6,2.1);d.position.set(0,0,0);
+  rotors.push(r);});
+// motor y caja de engranajes a un lado
+const gear=box(0.8,1.4,1.6,orange);gear.position.set(2.85,TOP+0.1,-0.2);scene.add(gear);
+const mot=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.9,18),flat('#4a5260'));mot.rotation.z=Math.PI/2;mot.position.set(3.6,TOP+0.3,-0.2);scene.add(mot);
+// tolva y tubo de jarabe (arriba)
+const hop=new THREE.Mesh(new THREE.CylinderGeometry(1.0,0.22,1.2,20,1,true),new THREE.MeshLambertMaterial({color:'#dfe4ea',side:THREE.DoubleSide}));hop.position.set(-0.6,6.4,-0.2);scene.add(hop);
+const hopL=box(0.12,3,0.12,'#9aa3ad');hopL.position.set(-0.6,8.4,-0.2);scene.add(hopL);
+const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,3.4,12),flat('#9aa3ad'));pipe.rotation.z=Math.PI/2;pipe.position.set(2.4,5.8,0.2);scene.add(pipe);
+const noz=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.1,0.4,12),flat('#9aa3ad'));noz.position.set(0.75,5.6,0.2);scene.add(noz);
+const syrupMat=new THREE.MeshLambertMaterial({color:'#f4b73a',emissive:'#4a2a00',transparent:true,opacity:0.92});
+const glyMat=new THREE.MeshLambertMaterial({color:'#e9f6ff',transparent:true,opacity:0.7});
+const syrup=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.08,1,10),syrupMat);scene.add(syrup);
+const gly=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1,10),glyMat);scene.add(gly);
+// termómetro
+const thermo=new THREE.Group();thermo.position.set(2.75,TOP+1.0,1.2);scene.add(thermo);
+const tube=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,2.0,14),new THREE.MeshLambertMaterial({color:'#ffffff',transparent:true,opacity:0.6}));tube.position.y=1.0;thermo.add(tube);
+const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.2,14,10),flat('#e53935'));thermo.add(bulb);
+const colGeo=new THREE.CylinderGeometry(0.06,0.06,1,10);colGeo.translate(0,0.5,0);
+const col=new THREE.Mesh(colGeo,flat('#e53935'));col.position.y=0.1;thermo.add(col);
+for(let i=0;i<8;i++){const tk=box(0.14,0.025,0.02,'#2b2b2b',thermo);tk.position.set(0.18,0.25+i*0.24,0);}
+const mark=box(0.34,0.05,0.05,'#FFD54A',thermo);
+thermo.visible=false;
+
+// ---------- INGREDIENTES ----------
+// masa: bolas que crecen dentro de las dos artesas
+const blobs=[];for(let i=0;i<16;i++){const s=i%2?1:-1;const m=new THREE.Mesh(new THREE.IcosahedronGeometry(0.42+rnd()*0.18,1),flat('#efe3c4'));m.castShadow=true;
+  m.userData={s,a:rnd()*Math.PI,z:-0.95+rnd()*1.9,r:0.2+rnd()*0.45,ph:rnd()*6,pink:18.6+rnd()*4.6};trough.add(m);blobs.push(m);}
+const cream=new THREE.Color('#efe3c4'),pinkC=new THREE.Color('#ff79b3'),sugC=new THREE.Color('#f7ede0');
+const gb=[];for(let i=0;i<8;i++){const m=new THREE.Mesh(new THREE.DodecahedronGeometry(0.32,0),flat('#efe3c4'));m.castShadow=true;m.userData={x:(rnd()-.5)*3,z:(rnd()-.5)*1.6,t0:6.3+i*0.12,r:rnd()*3};scene.add(m);gb.push(m);}
+const puffs=[];for(let i=0;i<12;i++){const p=new THREE.Mesh(new THREE.IcosahedronGeometry(0.3,1),new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:0.8}));p.userData={ph:i/12,x:(rnd()-.5)*3,z:(rnd()-.5)*1.6};scene.add(p);puffs.push(p);}
+const sugar=[];const sg=new THREE.BoxGeometry(0.07,0.07,0.07),sm=flat('#ffffff');
+for(let i=0;i<220;i++){const p=new THREE.Mesh(sg,sm);p.userData={t0:9.3+rnd()*2.3,x:-0.6+(rnd()-.5)*0.5,z:-0.2+(rnd()-.5)*0.5,sx:(rnd()-.5)*2.4,sz:(rnd()-.5)*1.2};scene.add(p);sugar.push(p);}
+const drops=[];for(let i=0;i<14;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(0.13,12,10),flat(i%2?'#ff4f9a':'#c6f0ff'));d.userData={t0:18.3+i*0.12,x:(rnd()-.5)*2.6,z:(rnd()-.5)*1.4};scene.add(d);drops.push(d);}
+const bottleC=new THREE.Group();scene.add(bottleC);
+const bc=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.6,14),flat('#ff4f9a'));bottleC.add(bc);
+const bcn=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.09,0.2,10),flat('#ffffff'));bcn.position.y=0.4;bottleC.add(bcn);
+// mesa de descarga y masa volcada
+const tab=box(4.4,0.12,2.2,'#9aa3ad');tab.position.set(0,1.1,3.6);scene.add(tab);
+[[-2,-0.95],[2,-0.95],[-2,0.95],[2,0.95]].forEach(p=>{const l=box(0.12,1.05,0.12,'#5d6773');l.position.set(p[0],0.55,3.6+p[1]);scene.add(l);});
+const lump=new THREE.Mesh(new THREE.IcosahedronGeometry(1,2),flat('#ff79b3'));lump.castShadow=true;scene.add(lump);
+const pinkMat=new THREE.MeshLambertMaterial({color:'#ff6fae',emissive:'#5a1030',flatShading:true});
+const ball=new THREE.Mesh(new THREE.IcosahedronGeometry(0.32,1),pinkMat);ball.castShadow=true;scene.add(ball);
+
+// ---------- TEXTOS ----------
+const PH=[
+ [0.3,2.8,[['Aquí'],['es'],['donde'],['nace',1],['de'],['verdad'],['el'],['chicle.']]],
+ [3.2,5.8,[['Una'],['mezcladora'],['gigante'],['con'],['dos'],['aspas',1],['en',1],['forma'],['de'],['Z.',1]]],
+ [6.2,8.8,[['Primero'],['entra'],['la'],['goma',1],['base,',1],['caliente'],['y'],['blandita.']]],
+ [9.2,11.8,[['Luego'],['el'],['azúcar,',1],['o'],['edulcorantes'],['si'],['es'],['sin'],['azúcar.']]],
+ [12.2,14.8,[['Jarabe',1],['de'],['glucosa,'],['para'],['que'],['no'],['se'],['seque.']]],
+ [15.2,17.8,[['Glicerina,',1],['para'],['que'],['siga'],['blando.']]],
+ [18.2,20.8,[['Y'],['al'],['final,'],['el'],['aroma',1],['y'],['el'],['color.']]],
+ [21.2,24.6,[['Las'],['aspas'],['amasan',1],['hasta'],['que'],['todo'],['queda'],['igual'],['de'],['rosa.']]],
+ [25.2,28.6,[['La'],['masa'],['no'],['debe'],['pasar'],['de'],['unos'],['55',1],['grados.',1]]],
+ [29.2,32.6,[['Sale'],['calentita'],['y'],['blanda,'],['como'],['plastilina.',1]]],
+ [33.2,35.8,[['Ahora'],['toca'],['darle'],['forma…',1]]]];
+const wp=(m,x,y,z)=>{trough.updateMatrixWorld(true);return trough.localToWorld(v3(x,y,z));};
+const CALL=[
+ [3.8,6.0,'ASPAS EN Z',()=>rotors[0].localToWorld(v3(0,0.4,-0.6)),-1],
+ [6.8,9.0,'GOMA BASE',()=>v3(0.9,TOP+0.3,0),1],
+ [9.8,12.0,'AZÚCAR',()=>v3(-0.6,TOP+1.6,-0.2),-1],
+ [12.8,15.0,'JARABE DE GLUCOSA',()=>v3(-0.6,TOP+1.9,-0.2),1,-120],
+ [15.8,18.0,'GLICERINA',()=>v3(0.75,TOP+1.7,0.2),1],
+ [18.8,21.0,'AROMA Y COLOR',()=>v3(0.3,TOP+0.4,0.2),-1]];
+const cap=document.getElementById('cap'),call=document.getElementById('call'),dot=document.getElementById('dot'),line=document.getElementById('line'),fade=document.getElementById('fade'),temp=document.getElementById('temp'),tv=document.getElementById('tv');
+let lastPh=-1;
+function captions(t){let pi=PH.findIndex(p=>t>=p[0]&&t<p[1]+0.35);
+  if(pi!==lastPh){cap.innerHTML=pi<0?'':PH[pi][2].map(w=>'<span'+(w[1]?' class="k"':'')+'>'+w[0]+'</span>').join(' ');lastPh=pi;}
+  if(pi>=0){const p=PH[pi];const n=p[2].length;const d=(p[1]-p[0]-0.4)/n;cap.querySelectorAll('span').forEach((s,i)=>{const on=t>=p[0]+i*d;s.className=(p[2][i][1]?'k ':'')+(on?'on':'');});
+    cap.style.opacity=t>p[1]?clamp(1-(t-p[1])/0.35):1;}
+  const c=CALL.find(c=>t>=c[0]&&t<c[1]);
+  if(c){const q=clamp((t-c[0])/0.3);const out=clamp((c[1]-t)/0.25);const pr=c[3]().project(camera);const x=(pr.x+1)/2*W,y=(1-pr.y)/2*H;
+    const ex=x+c[4]*150,ey=y+(c[5]===undefined?-150:c[5]);dot.style.left=(x-7)+'px';dot.style.top=(y-7)+'px';
+    const L=Math.hypot(ex-x,ey-y)*q;line.style.left=x+'px';line.style.top=(y-1.5)+'px';line.style.width=L+'px';line.style.transform='rotate('+Math.atan2(ey-y,ex-x)+'rad)';
+    call.textContent=c[2];call.style.left=Math.max(24,Math.min(W-24-call.offsetWidth,(c[4]>0?ex:ex-call.offsetWidth)))+'px';call.style.top=(ey-22)+'px';
+    const op=Math.min(q,out);[dot,line,call].forEach(e=>e.style.opacity=op);call.style.transform='scale('+(0.8+0.2*q)+')';}
+  else [dot,line,call].forEach(e=>e.style.opacity=0);}
+function camTo(t,keys){let i=0;while(i<keys.length-1&&t>=keys[i+1][0])i++;const b=keys[i],a=keys[Math.max(0,i-1)];
+  const k=ease(clamp((t-b[0])/(b[3]||0.9)));camera.position.copy(a[1]).lerp(b[1],k);camera.lookAt(a[2].clone().lerp(b[2],k));}
+const CAM=[[0,v3(-1.5,7.5,22),v3(0,3,0)],[0.01,v3(0,5.6,11.5),v3(0,2.3,0),2.8],
+  [6,v3(0,6.8,8.6),v3(0,2.4,0)],[12,v3(1.4,6.4,9.6),v3(0,3.8,0)],[18,v3(0,6.8,8.6),v3(0,2.4,0)],
+  [25,v3(3.0,4.6,10.2),v3(1.2,3.1,0.6)],[29,v3(5.2,4.6,10.4),v3(0,2.2,2.0)],[33,v3(1.8,3.6,11.2),v3(0.9,2.3,3.4)]];
+
+window.renderFrame=function(t){
+  camTo(t,CAM);
+  const fill=clamp((t-6.4)/1.2)*0.45+clamp((t-9.5)/2.2)*0.2+clamp((t-12.5)/2.2)*0.15+clamp((t-15.5)/2)*0.1+clamp((t-18.5)/1.5)*0.1;
+  const spd=t<21?1.2:t<25?2.4:t<29?1.2:0.5;
+  const ang=t<21?t*1.2:t<25?21*1.2+(t-21)*2.4:21*1.2+4*2.4+(t-25)*1.0;
+  rotors[0].rotation.z=ang;rotors[1].rotation.z=-ang*0.7;
+  // masa
+  const tilt=ease(clamp((t-29.2)/1.4));pivot.rotation.x=tilt*0.9;
+  const out=clamp((t-30.0)/1.2);
+  blobs.forEach((m,i)=>{const u=m.userData;const a=u.a+ang*(u.s<0?1:-0.7)*0.25+Math.sin(t*2+u.ph)*0.2;
+    m.position.set(u.s*RT+Math.cos(Math.PI+a)*u.r*0.9,-0.35+Math.sin(Math.PI+a)*u.r*0.6+0.15*fill,u.z+Math.sin(t*1.3+u.ph)*0.1);
+    const s=Math.max(0.001,fill*(1-out));m.scale.set(s*1.1,s,s*1.1);m.visible=s>0.01;
+    const sugarMix=clamp((t-10)/2)*0.6*(1-clamp((t-u.pink)/1.2));
+    m.material.color.copy(cream).lerp(sugC,sugarMix).lerp(pinkC,clamp((t-u.pink)/1.2));});
+  // goma base que cae humeando
+  gb.forEach(m=>{const u=m.userData;m.visible=t>u.t0&&t<8.4;m.position.set(u.x,fall(t,u.t0,8,TOP-0.1),u.z);m.rotation.set(u.r+t,u.r,0);const sh=clamp((t-u.t0-0.6)/1.2);m.scale.setScalar(Math.max(0.001,1-sh));});
+  puffs.forEach(p=>{const u=p.userData;const q=((t*0.6+u.ph)%1);const on=clamp((t-6.5)/0.5)*clamp((10-t)/0.8);p.visible=on>0;p.position.set(u.x,TOP+0.3+q*2.2,u.z);p.scale.setScalar(0.4+q);p.material.opacity=0.8*(1-q)*on;});
+  // azúcar
+  sugar.forEach(p=>{const u=p.userData;const ft=t-u.t0;p.visible=ft>0&&ft<0.85;if(p.visible){const q=ft/0.85;p.position.set(u.x+u.sx*q*0.5,lerp(5.8,TOP-0.1,q),u.z+u.sz*q*0.5);}});
+  // jarabe 12.3 → 14.7 desde la tolva
+  const sy=t>12.3&&t<14.8;syrup.visible=sy;if(sy){const top=5.8,bot=TOP-0.1+0.2*fill;const g=clamp((t-12.3)/0.3);const b=lerp(top,bot,g);syrup.scale.y=top-b;syrup.position.set(-0.6,(top+b)/2,-0.2);}
+  // glicerina 15.3 → 17.7 desde el tubo
+  const gy=t>15.3&&t<17.8;gly.visible=gy;if(gy){const top=5.4,bot=TOP-0.1+0.2*fill;const g=clamp((t-15.3)/0.3);const b=lerp(top,bot,g);gly.scale.y=top-b;gly.position.set(0.75,(top+b)/2,0.2);}
+  // aroma y color
+  bottleC.visible=t>18.0&&t<20.6;bottleC.position.set(0.3,TOP+2.4,0.2);bottleC.rotation.z=Math.PI*0.75*clamp((t-18.0)/0.3);
+  drops.forEach(d=>{const u=d.userData;d.visible=t>u.t0&&t<u.t0+0.7;d.position.set(0.3+u.x*clamp((t-u.t0)/0.6),fall(t,u.t0,TOP+2.1,TOP-0.1),0.2+u.z*clamp((t-u.t0)/0.6));});
+  // termómetro 25 → 29
+  thermo.visible=t>24.8&&t<29.4;const tq=ease(clamp((t-25.4)/2.2));const deg=Math.round(lerp(20,55,tq));
+  thermo.scale.setScalar(back(clamp((t-24.8)/0.4)));col.scale.y=lerp(0.25,1.42,tq);mark.position.set(0,0.1+1.42,0);
+  tv.textContent=deg;temp.style.opacity=t>25.2&&t<29.2?Math.min(clamp((t-25.2)/0.3),clamp((29.2-t)/0.3)):0;
+  // masa volcada en la mesa
+  const lq=clamp((t-30.2)/0.8);lump.visible=lq>0;
+  const wob=t>31?1+0.1*Math.sin((t-31)*9)*Math.exp(-(t-31)*1.5):1;
+  lump.scale.set(lq*1.25*wob,lq*0.6/wob,lq*0.9*wob);lump.position.set(0,1.16+lq*0.55*(1/wob),3.5);lump.rotation.y=0.3;
+  const squash=t>33.2?clamp((t-33.2)/0.4):0;if(squash>0)lump.scale.y*=1-0.15*Math.sin(squash*Math.PI);
+  // bolita que sale y salta
+  ball.visible=t>33.3;if(ball.visible){const k=clamp((t-33.5)/2.2);const p=v3(lerp(0,2.6,k),1.9+Math.sin(Math.min(1,k*1.6)*Math.PI)*1.5+(k>0.62?-(k-0.62)*3:0),3.6);
+    if(t<33.5)p.y=1.4+clamp((t-33.3)/0.2)*0.5;ball.position.copy(p);ball.scale.setScalar(back(clamp((t-33.3)/0.3)));ball.rotation.set(t*3,t*2,0);}
+
+  renderer.render(scene,camera);
+  captions(t);
+  fade.style.opacity=0;
+};
+window.renderFrame(0);
+</script>
+</body>
+</html>
